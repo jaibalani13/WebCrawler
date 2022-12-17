@@ -16,7 +16,6 @@ def clear_file_if_exists():
         json.dump({"results": []}, file)
 
 def getdata(url):
-    # TODO: yet to implement: infinite scroll. might need to implement using selenium since there is no infinite scroll handling for bs4
     r = requests.get(url, timeout=5)
     if r.status_code != 200:
         raise Exception("Url couldn't be loaded")
