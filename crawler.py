@@ -6,12 +6,20 @@ import validators
 import re
 
 
+def is_valid_image_url_src(url_src):
+    if re.search(r'/([\w_-]+[.](jpg|gif|png))$', url_src):
+        return True
+    return False
+
 def clear_file_if_exists():
     with open("results.json", 'w') as file:
         json.dump({"results": []}, file)
 
 def getdata(url):
+    # TODO: yet to implement: infinite scroll. might need to implement using selenium since there is no infinite scroll handling for bs4
     r = requests.get(url, timeout=5)
+    if r.status_code != 200:
+        raise Exception("Url couldn't be loaded")
     return r.text
 
 def write_data_to_file(image_data):
@@ -35,11 +43,25 @@ def scrape_images(start_url, current_depth, final_depth):
     soup = BeautifulSoup(htmldata, 'html.parser')
     image_data = []
     for item in soup.find_all('img'):
-        image_data.append({
-            "imageUrl": item['src'],
-            "sourceUrl": start_url,
-            "depth": current_depth
-        })
+        if item.get('src'):
+            image_src = item['src']
+            # add validation for image
+            if not is_valid_image_url_src(image_src):
+                continue
+            if validators.url(image_src):
+                image_data.append({
+                    "imageUrl": image_src,
+                    "sourceUrl": start_url,
+                    "depth": current_depth
+                })
+            elif re.search(r"/.*", image_src):
+                image_src = start_url + image_src.strip("/")
+                image_data.append({
+                    "imageUrl": image_src,
+                    "sourceUrl": start_url,
+                    "depth": current_depth
+                })
+
     write_data_to_file(image_data)
 
     links_in_page = []
@@ -53,7 +75,6 @@ def scrape_images(start_url, current_depth, final_depth):
                 new_url = start_url + item['href'].strip("/")
                 if new_url != start_url:
                     links_in_page.append(new_url)
-
 
     for link in links_in_page:
         scrape_images(link, current_depth+1, final_depth)
